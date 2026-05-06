@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>정수 입력</title>
+</head>
+<body>
+
+<h3>정수 5개 입력받아 역순으로 출력</h3>
+
+<script>
+let arr = [];
+
+
+for (let i = 0; i < 5; i++) {
+    let num = prompt((i+1) + "번째 정수 입력:");
+    arr.push(Number(num));
+}
+
+
+document.write("<p>입력된 수의 배열<br>" + arr.join(" ") + "</p>");
+
+document.write("<p>역순으로 재정렬된 배열<br>" + arr.reverse().join(" ") + "</p>");
+</script>
+
+</body>
+</html>
