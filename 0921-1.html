@@ -39,6 +39,7 @@ let timeLeft = 30;
 let gameRunning = false;
 let timerId;
 let animId;
+let isGolden = false;
 
 const ball = {
     x: 300,
@@ -56,6 +57,7 @@ function startGame() {
     score = 0;
     timeLeft = 30;
     speedLevel = 1;
+    isGolden = false;
 
     scoreText.textContent = score;
     timeText.textContent = timeLeft;
@@ -98,7 +100,13 @@ function endGame() {
 function drawBall() {
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-    ctx.fillStyle = "tomato";
+
+    if (isGolden) {
+        ctx.fillStyle = "gold";
+    } else {
+        ctx.fillStyle = "tomato";
+    }
+
     ctx.fill();
 }
 
@@ -139,7 +147,12 @@ canvas.addEventListener("click", function(event) {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance <= ball.radius) {
-        score++;
+        if (isGolden) {
+            score += 5;
+        } else {
+            score += 1;
+        }
+
         scoreText.textContent = score;
 
         speedLevel++;
@@ -164,6 +177,12 @@ canvas.addEventListener("click", function(event) {
 function moveBallRandom() {
     ball.x = Math.random() * (canvas.width - ball.radius * 2) + ball.radius;
     ball.y = Math.random() * (canvas.height - ball.radius * 2) + ball.radius;
+
+    if (Math.random() < 0.2) {
+        isGolden = true;
+    } else {
+        isGolden = false;
+    }
 }
 </script>
 
