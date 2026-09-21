@@ -159,15 +159,15 @@ canvas.addEventListener("click", function(event) {
         speedText.textContent = speedLevel;
 
         if (ball.dx > 0) {
-            ball.dx += 0.5;
+            ball.dx += 2;
         } else {
-            ball.dx -= 0.5;
+            ball.dx -= 2;
         }
 
         if (ball.dy > 0) {
-            ball.dy += 0.5;
+            ball.dy += 2;
         } else {
-            ball.dy -= 0.5;
+            ball.dy -= 2;
         }
 
         moveBallRandom();
