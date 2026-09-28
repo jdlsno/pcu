@@ -135,11 +135,11 @@ ball.dy*=-1;
 }
 
 if(ball.dx<0&&isBallHitPaddle(leftPaddle)){
-ball.dx=Math.abs(ball.dx)*1;
+ball.dx=Math.abs(ball.dx)*1.1;
 }
 
 if(ball.dx>0&&isBallHitPaddle(rightPaddle)){
-ball.dx=-Math.abs(ball.dx)*1;
+ball.dx=-Math.abs(ball.dx)*1.1;
 }
 
 if(ball.x-ball.radius<0){
