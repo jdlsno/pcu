@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Pong 게임</title>
+<style>
+body{
+text-align:center;
+font-family:Arial;
+background:#f5f5f5;
+}
+canvas{
+border:2px solid black;
+background:#111;
+}
+button{
+padding:10px 20px;
+font-size:16px;
+margin-bottom:10px;
+}
+</style>
+</head>
+<body>
+<h1>Pong 게임</h1>
+<p>왼쪽 플레이어: W / S | 오른쪽: AI</p>
+<p>왼쪽 점수: <span id="leftScore">0</span> | 오른쪽 점수: <span id="rightScore">0</span></p>
+<button id="startButton">게임 시작</button>
+<p id="message"></p>
+<canvas id="gameCanvas" width="700" height="400"></canvas>
+
+<script>
+const canvas=document.getElementById("gameCanvas");
+const ctx=canvas.getContext("2d");
+const leftScoreText=document.getElementById("leftScore");
+const rightScoreText=document.getElementById("rightScore");
+const startButton=document.getElementById("startButton");
+const message=document.getElementById("message");
+
+let leftScore=0;
+let rightScore=0;
+let gameStarted=false;
+let gameOver=false;
+
+const paddleWidth=12;
+const paddleHeight=80;
+
+const leftPaddle={
+x:30,
+y:canvas.height/2-paddleHeight/2,
+width:paddleWidth,
+height:paddleHeight,
+speed:6
+};
+
+const rightPaddle={
+x:canvas.width-30-paddleWidth,
+y:canvas.height/2-paddleHeight/2,
+width:paddleWidth,
+height:paddleHeight,
+speed:6
+};
+
+const ball={
+x:canvas.width/2,
+y:canvas.height/2,
+radius:10,
+dx:5,
+dy:3
+};
+
+const keys={};
+
+document.addEventListener("keydown",function(event){
+keys[event.key]=true;
+});
+
+document.addEventListener("keyup",function(event){
+keys[event.key]=false;
+});
+
+function drawCenterLine(){
+ctx.setLineDash([10,10]);
+ctx.beginPath();
+ctx.moveTo(canvas.width/2,0);
+ctx.lineTo(canvas.width/2,canvas.height);
+ctx.strokeStyle="white";
+ctx.stroke();
+ctx.setLineDash([]);
+}
+
+function drawBall(){
+ctx.beginPath();
+ctx.arc(ball.x,ball.y,ball.radius,0,Math.PI*2);
+ctx.fillStyle="white";
+ctx.fill();
+}
+
+function drawRect(rect){
+ctx.fillStyle="white";
+ctx.fillRect(rect.x,rect.y,rect.width,rect.height);
+}
+
+function movePaddles(){
+if(keys["w"]||keys["W"]) leftPaddle.y-=leftPaddle.speed;
+if(keys["s"]||keys["S"]) leftPaddle.y+=leftPaddle.speed;
+keepPaddleInside(leftPaddle);
+}
+
+function moveAI(){
+const aiCenter=rightPaddle.y+rightPaddle.height/2;
+const speed=2;
+if(ball.y<aiCenter) rightPaddle.y-=speed;
+else rightPaddle.y+=speed;
+keepPaddleInside(rightPaddle);
+}
+
+function keepPaddleInside(paddle){
+if(paddle.y<0) paddle.y=0;
+if(paddle.y+paddle.height>canvas.height) paddle.y=canvas.height-paddle.height;
+}
+
+function isBallHitPaddle(paddle){
+return ball.x-ball.radius<paddle.x+paddle.width&&
+ball.x+ball.radius>paddle.x&&
+ball.y-ball.radius<paddle.y+paddle.height&&
+ball.y+ball.radius>paddle.y;
+}
+
+function moveBall(){
+ball.x+=ball.dx;
+ball.y+=ball.dy;
+
+if(ball.y-ball.radius<0||ball.y+ball.radius>canvas.height){
+ball.dy*=-1;
+}
+
+if(ball.dx<0&&isBallHitPaddle(leftPaddle)){
+ball.dx=Math.abs(ball.dx)*1.1;
+}
+
+if(ball.dx>0&&isBallHitPaddle(rightPaddle)){
+ball.dx=-Math.abs(ball.dx)*1.1;
+}
+
+if(ball.x-ball.radius<0){
+rightScore++;
+rightScoreText.textContent=rightScore;
+checkWinner();
+if(!gameOver) resetBall();
+}
+
+if(ball.x+ball.radius>canvas.width){
+leftScore++;
+leftScoreText.textContent=leftScore;
+checkWinner();
+if(!gameOver) resetBall();
+}
+}
+
+function resetBall(){
+ball.x=canvas.width/2;
+ball.y=canvas.height/2;
+ball.dx=ball.dx>0?-5:5;
+ball.dy=Math.random()*6-3;
+if(ball.dy===0) ball.dy=2;
+}
+
+function checkWinner(){
+if(leftScore>5){
+message.textContent="플레이어 승리!";
+gameOver=true;
+gameStarted=false;
+startButton.textContent="다시 시작";
+}
+if(rightScore>=6){
+message.textContent="AI 승리!";
+gameOver=true;
+gameStarted=false;
+startButton.textContent="다시 시작";
+}
+}
+
+function startGame(){
+leftScore=0;
+rightScore=0;
+leftScoreText.textContent=0;
+rightScoreText.textContent=0;
+message.textContent="";
+gameOver=false;
+gameStarted=true;
+startButton.textContent="게임 재시작";
+leftPaddle.y=canvas.height/2-paddleHeight/2;
+rightPaddle.y=canvas.height/2-paddleHeight/2;
+ball.x=canvas.width/2;
+ball.y=canvas.height/2;
+ball.dx=5;
+ball.dy=3;
+}
+
+startButton.addEventListener("click",startGame);
+
+function drawGame(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+drawCenterLine();
+
+if(gameStarted&&!gameOver){
+movePaddles();
+moveAI();
+moveBall();
+}
+
+drawBall();
+drawRect(leftPaddle);
+drawRect(rightPaddle);
+requestAnimationFrame(drawGame);
+}
+
+drawGame();
+</script>
+</body>
+</html>
