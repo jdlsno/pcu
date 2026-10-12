@@ -1,0 +1,491 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake 게임</title>
+
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            color: #222;
+            margin: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .info {
+            font-size: 18px;
+            margin: 12px;
+        }
+
+        canvas {
+            display: block;
+            margin: 15px auto;
+            border: 2px solid #333;
+            background: #fff;
+            max-width: 95vw;
+            height: auto;
+        }
+
+        button {
+            padding: 9px 16px;
+            border: 1px solid #aaa;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #e8e8e8;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Snake 게임</h1>
+
+    <div class="info">
+        점수: <span id="score">0</span>
+        &nbsp;|&nbsp;
+        레벨: <span id="level">1</span>
+        &nbsp;|&nbsp;
+        최고 점수: <span id="best">0</span>
+    </div>
+
+    <p>조작: 방향키 ↑ ↓ ← →</p>
+    <p>🍎 일반 사과 +1점 &nbsp; 🌟 황금 사과 +5점</p>
+    <p>게임 오버 후 Enter 키로 재시작</p>
+
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <button onclick="restartGame()">다시 시작</button>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const scoreText = document.getElementById("score");
+        const levelText = document.getElementById("level");
+        const bestText = document.getElementById("best");
+
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake;
+        let food;
+        let goldenFood;
+        let obstacles;
+
+        let dx, dy;
+        let nextDx, nextDy;
+
+        let score;
+        let level;
+        let best = 0;
+
+        let gameOver = false;
+        let rainbowHue = 0;
+
+        let lastTime = 0;
+        let moveTimer = 0;
+        let goldenTimer = 0;
+        let animationId = null;
+
+        try {
+            best = Number(localStorage.getItem("snakeBest")) || 0;
+        } catch (error) {
+            best = 0;
+        }
+
+        bestText.textContent = best;
+
+        function resetState() {
+            snake = [{ x: 10, y: 10 }];
+            food = null;
+            goldenFood = null;
+            obstacles = [];
+
+            dx = 1;
+            dy = 0;
+            nextDx = 1;
+            nextDy = 0;
+
+            score = 0;
+            level = 1;
+            gameOver = false;
+            rainbowHue = 0;
+
+            lastTime = 0;
+            moveTimer = 0;
+            goldenTimer = 0;
+
+            updateUI();
+            makeObstacles();
+            moveFood();
+        }
+
+        function updateUI() {
+            scoreText.textContent = score;
+            levelText.textContent = level;
+            bestText.textContent = best;
+        }
+
+        function randomPosition() {
+            return {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+        }
+
+        function occupied(x, y) {
+            return snake.some(part =>
+                part.x === x && part.y === y
+            ) || obstacles.some(part =>
+                part.x === x && part.y === y
+            ) || (food &&
+                food.x === x && food.y === y
+            ) || (goldenFood &&
+                goldenFood.x === x && goldenFood.y === y
+            );
+        }
+
+        function emptyPosition() {
+            for (let i = 0; i < 1000; i++) {
+                const position = randomPosition();
+
+                if (!occupied(position.x, position.y)) {
+                    return position;
+                }
+            }
+
+            return null;
+        }
+
+        function moveFood() {
+            food = emptyPosition();
+
+            if (!food) {
+                endGame("승리!");
+            }
+        }
+
+        function makeObstacles() {
+            const target = Math.min((level - 1) * 2, 18);
+
+            while (obstacles.length < target) {
+                const position = randomPosition();
+
+    
+                if (
+                    Math.abs(position.x - 10) <= 2 &&
+                    Math.abs(position.y - 10) <= 2
+                ) {
+                    continue;
+                }
+
+                if (!occupied(position.x, position.y)) {
+                    obstacles.push(position);
+                }
+            }
+        }
+
+        function drawTile(x, y, color) {
+            ctx.fillStyle = color;
+
+            ctx.fillRect(
+                x * gridSize + 1,
+                y * gridSize + 1,
+                gridSize - 2,
+                gridSize - 2
+            );
+        }
+
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                if (score >= 5) {
+                    const hue =
+                        (rainbowHue + index * 18) % 360;
+
+                    drawTile(
+                        part.x,
+                        part.y,
+                        `hsl(${hue}, 90%, 50%)`
+                    );
+                } else {
+                    drawTile(
+                        part.x,
+                        part.y,
+                        index === 0 ? "green" : "limegreen"
+                    );
+                }
+            });
+        }
+
+        function drawFood() {
+            if (food) {
+                drawTile(food.x, food.y, "red");
+            }
+
+            if (goldenFood) {
+                drawTile(
+                    goldenFood.x,
+                    goldenFood.y,
+                    "gold"
+                );
+
+                ctx.fillStyle = "#222";
+                ctx.font = "15px Arial";
+                ctx.textAlign = "center";
+
+                ctx.fillText(
+                    "★",
+                    goldenFood.x * gridSize + gridSize / 2,
+                    goldenFood.y * gridSize + 15
+                );
+            }
+        }
+
+        function drawObstacles() {
+            obstacles.forEach(part => {
+                drawTile(part.x, part.y, "#666");
+
+                ctx.fillStyle = "#aaa";
+
+                ctx.fillRect(
+                    part.x * gridSize + 5,
+                    part.y * gridSize + 5,
+                    10,
+                    10
+                );
+            });
+        }
+
+        function moveSnake() {
+            dx = nextDx;
+            dy = nextDy;
+
+            const head = {
+                x: snake[0].x + dx,
+                y: snake[0].y + dy
+            };
+
+            
+            if (
+                head.x < 0 ||
+                head.x >= tileCount ||
+                head.y < 0 ||
+                head.y >= tileCount
+            ) {
+                endGame();
+                return;
+            }
+
+        
+            if (obstacles.some(part =>
+                part.x === head.x && part.y === head.y
+            )) {
+                endGame();
+                return;
+            }
+
+            const eatingFood = food &&
+                head.x === food.x &&
+                head.y === food.y;
+
+            const eatingGolden = goldenFood &&
+                head.x === goldenFood.x &&
+                head.y === goldenFood.y;
+
+            
+            snake.unshift(head);
+
+            if (eatingFood) {
+                score += 1;
+                moveFood();
+            } else if (eatingGolden) {
+                score += 5;
+                goldenFood = null;
+                goldenTimer = 0;
+            } else {
+                snake.pop();
+            }
+
+            if (gameOver) return;
+
+        
+            const newLevel = Math.floor(score / 5) + 1;
+
+            if (newLevel > level) {
+                level = newLevel;
+                makeObstacles();
+            }
+
+            
+            if (score > best) {
+                best = score;
+
+                try {
+                    localStorage.setItem("snakeBest", best);
+                } catch (error) {
+                    
+                }
+            }
+
+            updateUI();
+        }
+
+        function endGame(message = "게임 오버!") {
+            if (gameOver) return;
+
+            gameOver = true;
+
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+            ctx.fillRect(
+                0, 0,
+                canvas.width,
+                canvas.height
+            );
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "white";
+
+            ctx.font = "bold 30px Arial";
+            ctx.fillText(
+                message,
+                canvas.width / 2,
+                canvas.height / 2 - 30
+            );
+
+            ctx.font = "20px Arial";
+            ctx.fillText(
+                "점수: " + score,
+                canvas.width / 2,
+                canvas.height / 2 + 10
+            );
+
+            ctx.font = "16px Arial";
+            ctx.fillText(
+                "Enter 키를 눌러 재시작",
+                canvas.width / 2,
+                canvas.height / 2 + 45
+            );
+        }
+
+        function restartGame() {
+            if (animationId !== null) {
+                cancelAnimationFrame(animationId);
+            }
+
+            resetState();
+            draw();
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function draw() {
+            ctx.clearRect(
+                0, 0,
+                canvas.width,
+                canvas.height
+            );
+
+            drawObstacles();
+            drawFood();
+            drawSnake();
+        }
+
+        function gameLoop(timestamp) {
+            if (gameOver) {
+                animationId = null;
+                return;
+            }
+
+            const elapsed = lastTime
+                ? Math.min(timestamp - lastTime, 100)
+                : 0;
+
+            lastTime = timestamp;
+
+            moveTimer += elapsed;
+            goldenTimer += elapsed;
+
+            
+            if (goldenTimer >= 7000 && !goldenFood) {
+                goldenFood = emptyPosition();
+                goldenTimer = 0;
+            }
+
+            
+            const speed = Math.max(
+                75,
+                180 - (level - 1) * 12
+            );
+
+            if (moveTimer >= speed) {
+                moveTimer = 0;
+                moveSnake();
+                rainbowHue = (rainbowHue + 25) % 360;
+            }
+
+            if (!gameOver) {
+                draw();
+                animationId = requestAnimationFrame(gameLoop);
+            } else {
+                animationId = null;
+            }
+        }
+
+        document.addEventListener("keydown", function(event) {
+            if (
+                [
+                    "ArrowUp",
+                    "ArrowDown",
+                    "ArrowLeft",
+                    "ArrowRight"
+                ].includes(event.key)
+            ) {
+                event.preventDefault();
+            }
+
+            if (event.key === "Enter" && gameOver) {
+                restartGame();
+                return;
+            }
+
+            if (gameOver) return;
+
+            if (event.key === "ArrowUp" && dy !== 1) {
+                nextDx = 0;
+                nextDy = -1;
+            } else if (
+                event.key === "ArrowDown" && dy !== -1
+            ) {
+                nextDx = 0;
+                nextDy = 1;
+            } else if (
+                event.key === "ArrowLeft" && dx !== 1
+            ) {
+                nextDx = -1;
+                nextDy = 0;
+            } else if (
+                event.key === "ArrowRight" && dx !== -1
+            ) {
+                nextDx = 1;
+                nextDy = 0;
+            }
+        });
+
+    
+        resetState();
+        draw();
+        animationId = requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
